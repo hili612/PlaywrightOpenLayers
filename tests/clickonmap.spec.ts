@@ -1,18 +1,20 @@
 import { test, expect } from '@playwright/test';
-import * as olCoordinate from 'ol/coordinate';
-import * as ol from 'ol';
-import { fromLonLat } from 'ol/proj';
-
-
+// import * as ol from 'ol';
+// import 'ol/ol.css';
 
 test('go to', async ({ page }) => {
     const mapCanvas = await page.$('canvas'); 
-    await page.goto('https://openlayers.org/en/latest/examples/draw-and-modify-features.html');
+    await page.goto('http://127.0.0.1:5173/');
+    const mapInstanceExists = await page.evaluate(() => {
+      return !!document.querySelector('.ol-viewport'); // בודק אם האלמנט של OpenLayers נטען
+    });
+    console.log('Map instance exists visually:', mapInstanceExists);
+
     const canvasData = await page.evaluate(() => {
         const canvas = document.querySelector('canvas'); // או לבחור את ה-canvas הספציפי לפי ID או Class
-        if (!canvas) {
-          throw new Error('Canvas not found on the page');
-        }
+        // if (!canvas) {
+        //   throw new Error('Canvas not found on the page');
+        // }
       
         // שליפת תמונת ה-canvas כ-Data URL (תמונה ב-base64)
         const dataURL = (canvas as HTMLCanvasElement).toDataURL();
@@ -41,90 +43,66 @@ test('go to', async ({ page }) => {
       
 });
 
-// test('לחיצה על קורדינטות', async ({ page }) => {
-//   await page.goto('https://openlayers.org/en/latest/examples/draw-and-modify-features.html');
-//   // הגדר את הקואורדינטות
-//   const lat = 33.33333;
-//   const lon = 33.33333;
-
-//  // השתמש ב-evaluate כדי לחשב את המיקום הפיקסלי במפה
-//  const position = await page.evaluate(({ lat, lon }) => {
-//   // חפש את המפה בדף (הנחתנו שהיא ב- window.map)
-//   const map = window.map; // גישה ל-OpenLayers map
-//   if (!map) {
-//     throw new Error("לא נמצאה המפה");
-//   }
-
-//   // הוצא את ה-view של המפה בצורה הנכונה
-//   const view = map.getView();
-//   if (!view) {
-//     throw new Error("לא נמצא view במפה");
-//   }
-
-//   // המרת קואורדינטות לפיקסלים
-//   const pixel = view.getPixelFromCoordinate([lon, lat]); 
-//   return pixel; // מחזיר את המיקום הפיקסלי
-// }, { lat, lon }); // מעביר את הקואורדינטות כ-אובייקט
-
-// // בדוק אם המיקום הפיקסלי נמצא
-// if (!position) {
-//   throw new Error("לא נמצא מיקום במפה");
-// }
-
-//   // לחיצה על המיקום המחושב
-//   await page.mouse.click(position[0], position[1]);
-    
-// });
-
-
-// test(' ניסיון זום ', async ({ page }) => {
-
-
-//     // יצירת אובייקט מפה חדש עם OpenLayers
-// const map = new ol.Map({
-//     target: 'map', // ה-target הוא ה-ID של האלמנט ב-HTML שבו המפה מוצגת
-//     layers: [
-//       new ol.layer.Tile({
-//         source: new ol.source.OSM(), // מפה מבית OpenStreetMap
-//       }),
-//     ],
-//     view: new ol.View({
-//       center: ol.proj.fromLonLat([33.33333, 33.33333]), // הגדרת הקואורדינטות (Longitude, Latitude)
-//       zoom: 12, // רמת זום (הגבר את הערך לזום יותר קרוב)
-//     }),
-//   });
+test('לחיצה על מיקום במפה לפי קואורדינטות גיאוגרפיות', async ({ page }) => {
+  const longitude = 34.781768; 
+  const latitude = 22.085299; 
   
-      
-// });
+  await page.goto('http://127.0.0.1:5173/');
+  await page.waitForTimeout(10000);
+
+  await page.locator('.ol-viewport').first().waitFor({ state: 'visible' });
+
+  const pixel = await page.evaluate(({ longitude, latitude }) => {
+    const map = window.map; 
+    return map.getPixelFromCoordinate([longitude, latitude]);
+  }, { longitude, latitude });
+
+  const mapCanvas = await page.locator('.ol-viewport'); 
+  await mapCanvas.click({ position: { x: pixel[0], y: pixel[1] } });
+  
+  
+  console.log( { x: pixel[0], y: pixel[1] })
 
 
-test('לחיצה על קורדינטות', async ({ page }) => {
-//   // Geographic coordinates (latitude, longitude)
-// var geoCoord = new OpenLayers.LonLat(33.33333, 33.3333);
+ 
+  
 
-// // Convert geographic coordinates (EPSG:4326) to Web Mercator (EPSG:900913)
-// var coordinate = geoCoord.transform(
-//   new OpenLayers.Projection("EPSG:4326"),  // Source projection (WGS84)
-//   map.getProjectionObject()               // Target projection (Web Mercator)
-// );
-
-// // Now you can use this coordinate to get pixel values
-// var pixel = map.getPixelFromLonLat(coordinate);
-
-// console.log(pixel); // Pixel position based on the map's zoom and size
-
-// תוכל גם להמתין עד שהסקריפט של OpenLayers יטען לחלוטין אם יש צורך בכך
-  // await page.waitForFunction(() => window.ol !== undefined);
-
-  // עכשיו תוכל לבצע פעולות על המפה
-  const pixel = await page.evaluate(() => {
-    var geoCoord = [33.33333, 33.3333];
-    var coordinate = ol.proj.fromLonLat(geoCoord); // המרה מקואורדינטות גיאוגרפיות ל-EPSG:3857
-    var map = window.map; // גישה לאובייקט המפה שנוצר בדף
-    var pixel = map.getPixelFromCoordinate(coordinate); // המרת הקואורדינטות לפיקסל
-    return pixel;
+  const viewport = await page.evaluate(() => {
+    const map = window.map; // גישה לאובייקט המפה
+    const view = map.getView(); // החזרת ה-View של המפה (מצלמה)
+    
+    view.setZoom(60); // קביעת רמת הזום על ה-view
+  
+    return view.getZoom(); // מחזירים את רמת הזום הנוכחית לצורך אימות
   });
+  
+  // console.log(viewport); // מדפיס את רמת הזום החדשה
 
-  console.log(pixel);
+  // await page.evaluate((pixel) => {
+  //   const map = window.map;
+  //   if (map) {
+  //     map.forEachFeatureAtPixel(pixel, function(feature) {
+  //       console.log('יש פיצ\'ר על הפיקסל');
+  //     });
+  //   }
+  // }, pixel);
+
 
 });
+
+
+
+
+  // await page.evaluate(({ longitude, latitude }) => {
+  //   const map = window.map;
+  //   map.getView().setCenter([longitude, latitude]); // קואורדינטות
+  //   map.getView().setZoom(10); // רמת זום
+  //   // const view = map.getView();
+  //   // const center = [longitude, latitude];
+  //   map.zoomTo(center);
+  //   // view.setZoom(20);
+  //   // view.animate({zoom: 50}, {center: [635,585]});
+  // }, { longitude, latitude});
+
+
+

@@ -1,7 +1,7 @@
-import * as ol from 'ol';
+// import * as ol from 'ol';
 
-declare global {
-  interface Window {
-    map: ol.Map;
-  }
-}
+// declare global {
+//   interface Window {
+//     map: ol.Map;
+//   }
+// }
